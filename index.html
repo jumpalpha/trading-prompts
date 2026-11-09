@@ -157,6 +157,20 @@ textarea { font-family: var(--font-mono); font-size: 14px; min-height: 140px; re
 .fsize { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .note { margin: 0; overflow-wrap: anywhere; }
 a.copy { text-decoration: none; display: inline-flex; align-items: center; }
+/* add-to-home-screen help */
+.install { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+.install summary { list-style: none; cursor: pointer; padding: 14px 16px; display: flex; align-items: center; gap: 12px; font-weight: 700; }
+.install summary::-webkit-details-marker { display: none; }
+.install summary img { width: 32px; height: 32px; border-radius: 8px; flex: none; }
+.install summary .chev { margin-left: auto; color: var(--muted); transition: transform .2s; }
+.install[open] summary .chev { transform: rotate(90deg); }
+.install .body { padding: 0 16px 16px; display: grid; gap: 14px; }
+.howto { display: grid; gap: 6px; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--code-bg); }
+.howto.mine { border-color: var(--ad); background: var(--ad-soft); }
+.howto h3 { margin: 0; font: 600 1rem/1.3 var(--font-display); display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.howto h3 small { font: 700 11px/1 var(--font-body); letter-spacing: .06em; text-transform: uppercase; color: var(--ad); }
+.howto ol { margin: 0; padding-left: 1.3em; display: grid; gap: 4px; }
+.key { display: inline-block; font: 600 13px/1 var(--font-body); padding: 3px 7px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; background: var(--surface); white-space: nowrap; }
 /* passcode gate */
 .gate { min-height: 70vh; display: grid; place-items: center; }
 .gate form { width: 100%; max-width: 360px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 24px; display: grid; gap: 14px; }
@@ -270,6 +284,41 @@ a.copy { text-decoration: none; display: inline-flex; align-items: center; }
     </div>
     <div id="filesFeed" class="feed" hidden></div>
   </section>
+
+  <details class="install" id="install">
+    <summary><img src="icon-180.png" alt=""><span>Put this app on your phone or computer</span><span class="chev" aria-hidden="true">›</span></summary>
+    <div class="body">
+      <button class="primary" id="installBtn" type="button" hidden>Install app now</button>
+      <div class="howto" data-os="ios">
+        <h3>iPhone or iPad</h3>
+        <ol>
+          <li>Open this page in <b>Safari</b>. Other browsers on iPhone can't add apps.</li>
+          <li>Tap the <span class="key">Share</span> button (square with an arrow pointing up) at the bottom of the screen.</li>
+          <li>Scroll down and tap <span class="key">Add to Home Screen</span>.</li>
+          <li>Tap <span class="key">Add</span>. The blue chat-bubble icon shows up on your home screen.</li>
+        </ol>
+      </div>
+      <div class="howto" data-os="android">
+        <h3>Android phone</h3>
+        <ol>
+          <li>Open this page in <b>Chrome</b>.</li>
+          <li>Tap the <span class="key">⋮</span> menu in the top-right corner.</li>
+          <li>Tap <span class="key">Add to Home screen</span> or <span class="key">Install app</span>.</li>
+          <li>Tap <span class="key">Install</span> or <span class="key">Add</span> to confirm.</li>
+        </ol>
+      </div>
+      <div class="howto" data-os="desktop">
+        <h3>Windows or Mac computer</h3>
+        <ol>
+          <li>In <b>Chrome</b> or <b>Edge</b>, look for the install icon at the right end of the address bar (a monitor with a down arrow) and click it.</li>
+          <li>No icon? Open the <span class="key">⋮</span> or <span class="key">…</span> menu, then <span class="key">Save and share</span> → <span class="key">Install page as app</span> in Chrome, or <span class="key">Apps</span> → <span class="key">Install this site as an app</span> in Edge.</li>
+          <li>On a Mac in Safari: <span class="key">File</span> → <span class="key">Add to Dock</span>.</li>
+          <li>Or just bookmark the page: press <span class="key">Ctrl</span> + <span class="key">D</span> (<span class="key">⌘</span> + <span class="key">D</span> on Mac).</li>
+        </ol>
+      </div>
+      <p class="hint">You'll only need the passcode the first time on each device.</p>
+    </div>
+  </details>
 </div>
 
 <script>
@@ -632,6 +681,31 @@ a.copy { text-decoration: none; display: inline-flex; align-items: center; }
       else { m.textContent = "Wrong passcode. Try again."; m.classList.add("err"); $("#pass").value = ""; $("#pass").focus(); }
     } catch (err) { m.textContent = "Can't reach the board. Check your connection and try again."; m.classList.add("err"); }
   });
+
+  // ---------- add-to-home-screen help ----------
+  (function setupInstall() {
+    const box = $("#install");
+    const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+    if (standalone) { box.hidden = true; return; }
+    const ua = navigator.userAgent;
+    const os = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "ios"
+      : /Android/.test(ua) ? "android" : "desktop";
+    const mine = box.querySelector('.howto[data-os="' + os + '"]');
+    mine.classList.add("mine");
+    const tag = document.createElement("small"); tag.textContent = "Your device"; mine.querySelector("h3").append(tag);
+    mine.parentNode.insertBefore(mine, box.querySelector(".howto"));
+    if (store.get("tpfpe-install-seen") !== "1") { box.open = true; store.set("tpfpe-install-seen", "1"); }
+    let deferred = null;
+    const btn = $("#installBtn");
+    window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); deferred = e; btn.hidden = false; });
+    btn.addEventListener("click", async () => {
+      if (!deferred) return;
+      deferred.prompt();
+      try { await deferred.userChoice; } catch (e) {}
+      deferred = null; btn.hidden = true;
+    });
+    window.addEventListener("appinstalled", () => { box.hidden = true; });
+  })();
 
   const saved = store.get("tpfpe-pass");
   if (saved) enter(saved); else setTimeout(() => $("#pass").focus(), 50);
