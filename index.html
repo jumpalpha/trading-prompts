@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2f5bd3">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Prompt Trade">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Trading Prompts for Poor Educators</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one narrow column like a group text thread; composer slip on top, handoff bubbles below, newest first */
+:root {
+  --bg: #eef1f6;
+  --surface: #ffffff;
+  --fg: #1c2230;
+  --muted: #5d6679;
+  --line: #d5dbe6;
+  --code-bg: #f5f7fb;
+  --ad: #2f5bd3;      /* AD: blue ink */
+  --ad-soft: #e3eafc;
+  --dg: #b7791f;      /* DG: pencil yellow */
+  --dg-soft: #fbf0d9;
+  --bs: #c2413b;      /* BS: red grading pen */
+  --bs-soft: #fbe3e1;
+  --ok: #1f8a4c;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161f; --surface: #1b212d; --fg: #e7ebf3; --muted: #9aa4b8; --line: #2e3646; --code-bg: #151a24;
+    --ad: #7d9cff; --ad-soft: #1f2a48; --dg: #e8b04f; --dg-soft: #3a2f19; --bs: #f07a72; --bs-soft: #43211f; --ok: #4cc77f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161f; --surface: #1b212d; --fg: #e7ebf3; --muted: #9aa4b8; --line: #2e3646; --code-bg: #151a24;
+  --ad: #7d9cff; --ad-soft: #1f2a48; --dg: #e8b04f; --dg-soft: #3a2f19; --bs: #f07a72; --bs-soft: #43211f; --ok: #4cc77f;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 16px/1.5 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+}
+.wrap { max-width: 680px; margin: 0 auto; display: grid; gap: 20px; }
+
+header { display: grid; gap: 6px; }
+h1 { font: 800 clamp(1.6rem, 6vw, 2.3rem)/1.05 var(--font-display); margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+.sub { color: var(--muted); margin: 0; }
+.roster { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+.roster span { font: 700 12px/1 var(--font-body); letter-spacing: .06em; padding: 5px 8px; border-radius: 999px; }
+
+.label { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+/* person chips */
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip {
+  font: 700 15px/1 var(--font-body); border: 2px solid var(--line); background: var(--surface); color: var(--fg);
+  padding: 9px 14px; border-radius: 999px; cursor: pointer; min-height: 40px;
+}
+.chip:focus-visible, button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--ad); outline-offset: 2px; }
+.chip[aria-pressed="true"] { color: #fff; border-color: transparent; }
+.chip[data-p="AD"][aria-pressed="true"] { background: var(--ad); }
+.chip[data-p="DG"][aria-pressed="true"] { background: var(--dg); }
+.chip[data-p="BS"][aria-pressed="true"] { background: var(--bs); }
+.chip[data-p="ALL"][aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+
+/* composer */
+.composer { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 12px; }
+.row { display: grid; gap: 6px; }
+.split { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
+input[type=text], textarea, select {
+  width: 100%; font: 16px/1.45 var(--font-body); color: var(--fg); background: var(--code-bg);
+  border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+}
+textarea { font-family: var(--font-mono); font-size: 14px; min-height: 140px; resize: vertical; }
+.primary {
+  font: 700 16px/1 var(--font-body); border: 0; border-radius: 10px; padding: 13px 18px; cursor: pointer;
+  background: var(--fg); color: var(--bg); min-height: 46px;
+}
+.primary:disabled { opacity: .45; cursor: not-allowed; }
+.hint { font-size: 13px; color: var(--muted); margin: 0; }
+.status { font-size: 14px; color: var(--muted); min-height: 1.2em; margin: 0; }
+.status.err { color: var(--bs); }
+
+/* feed */
+.feedhead { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.feed { display: grid; gap: 18px; }
+.msg { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 10px; align-items: start; }
+.avatar {
+  width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+  font: 800 14px/1 var(--font-display); color: #fff; letter-spacing: .03em;
+}
+.bubble {
+  position: relative; background: var(--soft); border: 1px solid var(--line);
+  border-radius: 4px 16px 16px 16px; padding: 12px 14px 14px; display: grid; gap: 8px; min-width: 0;
+}
+.bubble::before { /* tail */
+  content: ""; position: absolute; left: -7px; top: 10px; width: 12px; height: 12px;
+  background: var(--soft); border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: rotate(45deg);
+}
+.meta { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 13px; color: var(--muted); }
+.meta b { color: var(--accent); font-size: 15px; }
+.to { font-weight: 700; color: var(--fg); }
+.ptitle { font: 600 1.1rem/1.25 var(--font-display); margin: 0; text-wrap: balance; }
+.prompt {
+  margin: 0; font: 13.5px/1.55 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere;
+  background: var(--surface); border: 1px dashed var(--accent); border-radius: 10px; padding: 12px;
+  max-height: 320px; overflow: auto;
+}
+.actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.copy {
+  font: 700 14px/1 var(--font-body); border: 0; border-radius: 999px; padding: 10px 16px; min-height: 40px;
+  background: var(--accent); color: #fff; cursor: pointer;
+}
+.copy.done { background: var(--ok); }
+.ghost {
+  font: 600 13px/1 var(--font-body); background: none; border: 1px solid var(--line); color: var(--muted);
+  border-radius: 999px; padding: 9px 12px; cursor: pointer; min-height: 36px;
+}
+.ghost.danger { color: var(--bs); border-color: var(--bs); }
+.msg[data-p="AD"] { --accent: var(--ad); --soft: var(--ad-soft); }
+.msg[data-p="DG"] { --accent: var(--dg); --soft: var(--dg-soft); }
+.msg[data-p="BS"] { --accent: var(--bs); --soft: var(--bs-soft); }
+.msg .avatar { background: var(--accent); }
+.empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 14px; padding: 22px; color: var(--muted); text-align: left; }
+.empty strong { color: var(--fg); display: block; font: 600 1.1rem/1.3 var(--font-display); margin-bottom: 4px; }
+.ro { color: var(--muted); font-size: 14px; }
+/* passcode gate */
+.gate { min-height: 70vh; display: grid; place-items: center; }
+.gate form { width: 100%; max-width: 360px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 24px; display: grid; gap: 14px; }
+.gate h1 { font-size: 1.6rem; }
+.gate input { font: 600 28px/1 var(--font-mono); letter-spacing: .5em; text-align: center; padding: 14px 12px 14px calc(12px + .5em); }
+.gate .primary { width: 100%; }
+@media (max-width: 420px) { .split { grid-template-columns: 1fr; } .primary { width: 100%; } }
+@media (prefers-reduced-motion: no-preference) { .msg { animation: in .25s ease-out both; } @keyframes in { from { transform: translateY(6px); opacity: .6 } } }
+</style>
+<style>body{margin:0;padding-top:max(20px,env(safe-area-inset-top,0px));padding-bottom:max(48px,env(safe-area-inset-bottom,0px))}[hidden]{display:none!important}</style>
+</head>
+<body>
+
+<div class="gate" id="gate">
+  <form id="gateForm" autocomplete="off">
+    <h1>Trading Prompts for Poor Educators</h1>
+    <label class="label" for="pass">Enter passcode</label>
+    <input id="pass" type="password" inputmode="numeric" maxlength="8" placeholder="••••">
+    <button class="primary" type="submit">Enter</button>
+    <p class="status" id="gateMsg" role="status"></p>
+  </form>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <header>
+    <h1>Trading Prompts for Poor Educators</h1>
+    <p class="sub">Swap AI prompts with the crew. Tap <b>Copy prompt</b> on any bubble and paste it straight into Claude.</p>
+    <div class="roster" aria-label="Members">
+      <span style="background:var(--ad-soft);color:var(--ad)">1 · AD</span>
+      <span style="background:var(--dg-soft);color:var(--dg)">2 · DG</span>
+      <span style="background:var(--bs-soft);color:var(--bs)">3 · BS</span>
+    </div>
+  </header>
+
+  <section class="composer" aria-labelledby="newLbl">
+    <div class="row">
+      <span class="label" id="newLbl">I am</span>
+      <div class="chips" id="whoChips" role="group" aria-label="I am">
+        <button class="chip" data-p="AD" aria-pressed="false">AD</button>
+        <button class="chip" data-p="DG" aria-pressed="false">DG</button>
+        <button class="chip" data-p="BS" aria-pressed="false">BS</button>
+      </div>
+    </div>
+    <form id="form" class="composer-form" style="display:grid;gap:12px">
+      <div class="row">
+        <label class="label" for="ptitle">Title</label>
+        <input id="ptitle" type="text" maxlength="120" placeholder="e.g. Pre-market MNQ game plan" autocomplete="off">
+      </div>
+      <div class="row">
+        <label class="label" for="pbody">Prompt</label>
+        <textarea id="pbody" maxlength="40000" placeholder="Paste or write the full prompt you want to hand off…"></textarea>
+      </div>
+      <div class="split">
+        <div class="row">
+          <label class="label" for="pto">Hand off to</label>
+          <select id="pto">
+            <option value="ALL">Everyone</option>
+            <option value="AD">AD</option>
+            <option value="DG">DG</option>
+            <option value="BS">BS</option>
+          </select>
+        </div>
+        <button class="primary" id="send" type="submit" disabled>Hand off prompt</button>
+      </div>
+      <p class="status" id="status" role="status">Pick who you are to post.</p>
+    </form>
+  </section>
+
+  <section class="feed" aria-label="Prompts">
+    <div class="feedhead">
+      <span class="label" id="count">Prompts</span>
+      <div class="chips" id="filterChips" role="group" aria-label="Show prompts from">
+        <button class="chip" data-p="ALL" aria-pressed="true">All</button>
+        <button class="chip" data-p="AD" aria-pressed="false">AD</button>
+        <button class="chip" data-p="DG" aria-pressed="false">DG</button>
+        <button class="chip" data-p="BS" aria-pressed="false">BS</button>
+      </div>
+    </div>
+    <div id="feed" class="feed">
+      <div class="empty" id="loading"><strong>Loading the prompt pile…</strong>Prompts from AD, DG and BS show up here, newest first.</div>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const API = "https://vvjgriwldvnqnlgzvnvs.supabase.co/rest/v1/rpc/";
+  const KEY = "sb_publishable_wns9aERfjHvFgMla8vB6Lw_shmufhsx";
+  const PEOPLE = { AD: "AD", DG: "DG", BS: "BS" };
+  const $ = (s) => document.querySelector(s);
+  const feedEl = $("#feed"), statusEl = $("#status"), sendBtn = $("#send");
+  let code = null, prompts = [], me = null, filter = "ALL", loaded = false, pendingDelete = null, pollTimer = null;
+
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+    del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+  };
+  if (PEOPLE[store.get("tpfpe-me")]) me = store.get("tpfpe-me");
+  const f0 = store.get("tpfpe-filter"); if (f0 === "ALL" || PEOPLE[f0]) filter = f0;
+
+  async function rpc(name, args) {
+    const res = await fetch(API + name, {
+      method: "POST",
+      headers: { apikey: KEY, Authorization: "Bearer " + KEY, "Content-Type": "application/json" },
+      body: JSON.stringify(args)
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) { const err = new Error((data && data.message) || "Request failed"); err.code = data && data.code; throw err; }
+    return data;
+  }
+
+  function setStatus(t, err) { statusEl.textContent = t; statusEl.classList.toggle("err", !!err); }
+
+  function syncChips() {
+    document.querySelectorAll("#whoChips .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.p === me)));
+    document.querySelectorAll("#filterChips .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.p === filter)));
+    sendBtn.disabled = !me;
+    if (!me) setStatus("Pick who you are to post.");
+    else if (statusEl.textContent.startsWith("Pick")) setStatus("Posting as " + me + ".");
+  }
+
+  $("#whoChips").addEventListener("click", (e) => {
+    const b = e.target.closest(".chip"); if (!b) return;
+    me = b.dataset.p; store.set("tpfpe-me", me);
+    setStatus("Posting as " + me + "."); syncChips(); render();
+  });
+  $("#filterChips").addEventListener("click", (e) => {
+    const b = e.target.closest(".chip"); if (!b) return;
+    filter = b.dataset.p; store.set("tpfpe-filter", filter);
+    syncChips(); render();
+  });
+
+  function fmtTime(iso) {
+    const ms = Date.parse(iso); if (isNaN(ms)) return "";
+    const d = new Date(ms), diff = (Date.now() - ms) / 1000;
+    if (diff < 60) return "just now";
+    if (diff < 3600) return Math.floor(diff / 60) + " min ago";
+    if (diff < 86400) return Math.floor(diff / 3600) + " hr ago";
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: d.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined }) +
+      " · " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+
+  async function copyText(text, btn, pre) {
+    let ok = false;
+    try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {
+      try {
+        const r = document.createRange(); r.selectNodeContents(pre);
+        const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+        ok = document.execCommand && document.execCommand("copy");
+      } catch (e2) {}
+    }
+    btn.textContent = ok ? "Copied ✓" : "Selected, press Ctrl+C";
+    btn.classList.toggle("done", ok);
+    setTimeout(() => { btn.textContent = "Copy prompt"; btn.classList.remove("done"); }, 1800);
+  }
+
+  function el(tag, cls, text) { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+
+  function render() {
+    feedEl.replaceChildren();
+    const list = prompts.filter(p => filter === "ALL" || p.sender === filter);
+    $("#count").textContent = list.length + (list.length === 1 ? " prompt" : " prompts");
+    if (!loaded) {
+      const e = el("div", "empty"); e.append(el("strong", null, "Loading the prompt pile…"), document.createTextNode("Prompts from AD, DG and BS show up here, newest first."));
+      feedEl.append(e); return;
+    }
+    if (!list.length) {
+      const e = el("div", "empty");
+      e.append(el("strong", null, filter === "ALL" ? "No prompts yet" : "Nothing from " + filter + " yet"),
+        document.createTextNode("Pick who you are above, paste a prompt, and tap Hand off prompt. It shows up here for everyone."));
+      feedEl.append(e); return;
+    }
+    for (const p of list) {
+      const who = PEOPLE[p.sender] ? p.sender : "AD";
+      const msg = el("article", "msg"); msg.dataset.p = who;
+      msg.append(el("div", "avatar", who));
+      const b = el("div", "bubble");
+      const meta = el("div", "meta");
+      meta.append(el("b", null, who));
+      const to = el("span"); to.append("to ", el("span", "to", PEOPLE[p.recipient] ? p.recipient : "Everyone")); meta.append(to);
+      meta.append(el("span", null, fmtTime(p.created_at)));
+      b.append(meta);
+      if (p.title) b.append(el("h3", "ptitle", p.title));
+      const pre = el("pre", "prompt", p.body || "");
+      b.append(pre);
+      const act = el("div", "actions");
+      const cp = el("button", "copy", "Copy prompt"); cp.type = "button";
+      cp.addEventListener("click", () => copyText(p.body || "", cp, pre));
+      act.append(cp);
+      if (me && me === p.sender) {
+        if (pendingDelete === p.id) {
+          const yes = el("button", "ghost danger", "Yes, delete"); yes.type = "button";
+          yes.addEventListener("click", () => removePrompt(p.id));
+          const no = el("button", "ghost", "Keep it"); no.type = "button";
+          no.addEventListener("click", () => { pendingDelete = null; render(); });
+          act.append(yes, no);
+        } else {
+          const del = el("button", "ghost", "Delete"); del.type = "button";
+          del.addEventListener("click", () => { pendingDelete = p.id; render(); });
+          act.append(del);
+        }
+      }
+      b.append(act);
+      msg.append(b);
+      feedEl.append(msg);
+    }
+  }
+
+  function lockOut() {
+    code = null; store.del("tpfpe-pass"); clearInterval(pollTimer);
+    $("#app").hidden = true; $("#gate").hidden = false;
+    const m = $("#gateMsg"); m.textContent = "The passcode changed. Enter the new one."; m.classList.add("err");
+  }
+
+  async function refresh(quiet) {
+    try {
+      prompts = await rpc("tp_list", { p_code: code }) || [];
+      loaded = true; render();
+      if (!quiet && statusEl.classList.contains("err") && statusEl.textContent.startsWith("Can't reach")) setStatus(me ? "Posting as " + me + "." : "Pick who you are to post.");
+    } catch (e) {
+      if (e.code === "28P01") return lockOut();
+      if (!loaded) { loaded = true; render(); }
+      setStatus("Can't reach the board right now. It'll refresh when the connection comes back.", true);
+    }
+  }
+
+  async function removePrompt(id) {
+    pendingDelete = null;
+    try { await rpc("tp_delete", { p_code: code, p_id: id, p_sender: me }); setStatus("Prompt deleted."); await refresh(true); }
+    catch (e) { if (e.code === "28P01") return lockOut(); setStatus("Couldn't delete that prompt. Try again in a moment.", true); render(); }
+  }
+
+  $("#form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const body = $("#pbody").value.trim(), title = $("#ptitle").value.trim();
+    if (!me) { setStatus("Pick who you are first.", true); return; }
+    if (!body) { setStatus("Paste a prompt before handing it off.", true); $("#pbody").focus(); return; }
+    sendBtn.disabled = true; setStatus("Handing off…");
+    try {
+      await rpc("tp_add", { p_code: code, p_sender: me, p_recipient: $("#pto").value, p_title: title.slice(0, 120), p_body: body.slice(0, 40000) });
+      $("#pbody").value = ""; $("#ptitle").value = ""; $("#pto").value = "ALL";
+      setStatus("Handed off as " + me + ".");
+      await refresh(true);
+    } catch (err) {
+      if (err.code === "28P01") return lockOut();
+      setStatus("Couldn't post right now. Check your connection and try again.", true);
+    } finally { sendBtn.disabled = !me; }
+  });
+
+  function enter(c) {
+    code = c; store.set("tpfpe-pass", c);
+    $("#gate").hidden = true; $("#app").hidden = false;
+    syncChips(); render(); refresh();
+    clearInterval(pollTimer);
+    pollTimer = setInterval(() => { if (!document.hidden) refresh(true); }, 15000);
+  }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && code) refresh(true); });
+
+  $("#gateForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const c = $("#pass").value.trim(), m = $("#gateMsg");
+    if (!c) return;
+    m.classList.remove("err"); m.textContent = "Checking…";
+    try {
+      if (await rpc("tp_check", { p_code: c })) { m.textContent = ""; enter(c); }
+      else { m.textContent = "Wrong passcode. Try again."; m.classList.add("err"); $("#pass").value = ""; $("#pass").focus(); }
+    } catch (err) { m.textContent = "Can't reach the board. Check your connection and try again."; m.classList.add("err"); }
+  });
+
+  const saved = store.get("tpfpe-pass");
+  if (saved) enter(saved); else setTimeout(() => $("#pass").focus(), 50);
+  syncChips();
+})();
+</script>
+</body>
+</html>
